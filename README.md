@@ -48,16 +48,14 @@ Completed package steps are safe to repeat - rerun after fixing any failure.
 
 ## After install
 
-1. **Log out or reboot** so `docker` group membership takes effect.
-2. Start the desktop from a TTY:
-   ```bash
-   labwc
-   ```
+1. **Log out or reboot** so `docker` group membership takes effect. The installer offers to reboot for you at the end.
+2. Log in on **tty1** - the desktop (labwc + Noctalia) starts automatically. On any other TTY, start it manually with `labwc`.
 3. Portainer waits at `https://localhost:9443` (bound to localhost only).
 
 ## Notes
 
 - Homebrew shellenv is appended to `~/.profile` (idempotent).
+- A tty1 autostart guard is appended to `~/.profile` (idempotent): on tty1 with no Wayland session, it `exec labwc`.
 - Existing `~/.config/labwc/autostart` is backed up to `autostart.latticed-backup` before being replaced.
 - Portainer compose file lives at `/opt/latticed/portainer/compose.yaml`.
 - `set -Eeuo pipefail` + `ERR` trap: the script stops at the first failure and tells you the line.

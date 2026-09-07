@@ -141,6 +141,17 @@ noctalia >/tmp/noctalia.log 2>&1 &
 AUTOSTART
 chmod +x "$LABWC_DIR/autostart"
 
+# Start the Wayland desktop automatically after logging in on tty1. No display
+# manager is installed, so this is what brings up labwc (which in turn launches
+# Noctalia via the autostart file above). Other TTYs stay plain shells.
+grep -q 'Latticed - start the desktop on tty1' "$PROFILE" || cat >> "$PROFILE" <<'DESKTOPEOF'
+
+# Latticed - start the desktop on tty1
+if [ -z "${WAYLAND_DISPLAY:-}" ] && [ "$(tty)" = "/dev/tty1" ]; then
+    exec labwc
+fi
+DESKTOPEOF
+
 sudo systemctl enable NetworkManager
 
 cat <<EOF3
@@ -156,7 +167,8 @@ cat <<EOF3
  Claude Code + OpenAI Codex CLI
 
 Log out/reboot so Docker group membership takes effect.
-Start the desktop from a TTY with: labwc
+The desktop starts automatically when you log in on tty1.
+(On other TTYs, start it manually with: labwc)
 
 No display manager is installed or replaced in v0.1.0.
 ============================================================
