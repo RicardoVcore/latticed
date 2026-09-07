@@ -1,0 +1,55 @@
+# Latticed
+
+Single-script bootstrap that turns a fresh **Debian 13 (Trixie)** install into a developer workstation: a Wayland desktop (Labwc + Noctalia), everyday apps, container tooling, and AI coding CLIs.
+
+> **v0.1.0** - no display manager is installed or replaced. You start the desktop from a TTY.
+
+## What it installs
+
+| Category | Packages |
+|----------|----------|
+| Desktop | Labwc (Wayland compositor), Noctalia shell, PipeWire audio, xdg-desktop-portal-wlr, PolicyKit, NetworkManager |
+| Apps | WezTerm, Chromium, Brave Origin, FileZilla, ImageMagick |
+| Fonts | Noto + Noto Color Emoji |
+| CLI tools | Homebrew, then `ripgrep`, `bat`, Node.js via brew |
+| Containers | Docker Engine + Compose plugin, Portainer CE on `https://localhost:9443` |
+| AI CLIs | Claude Code, OpenAI Codex CLI |
+
+## Requirements
+
+- Debian 13 (Trixie) only - script aborts on anything else.
+- Architecture `amd64` or `arm64` (Noctalia repo limit).
+- Run as your **normal user** (not root). `sudo` required; script calls it when needed.
+- Network access to Debian, Noctalia, Brave, Docker, and Homebrew repos.
+
+> **Use a minimal Debian base.** Latticed installs the entire Wayland stack itself (Labwc, Noctalia, PipeWire, portals) and no display manager. Start from a **netinst ISO** with every desktop task unchecked in `tasksel` (keep "standard system utilities"), or a cloud/minimal image. A preinstalled GNOME/KDE desktop only duplicates and conflicts with what this script sets up. Make sure `sudo` is installed and your user is in `sudo`.
+
+## Usage
+
+```bash
+git clone <this-repo> latticed
+cd latticed
+./install.sh
+```
+
+Completed package steps are safe to repeat - rerun after fixing any failure.
+
+## After install
+
+1. **Log out or reboot** so `docker` group membership takes effect.
+2. Start the desktop from a TTY:
+   ```bash
+   labwc
+   ```
+3. Portainer waits at `https://localhost:9443` (bound to localhost only).
+
+## Notes
+
+- Homebrew shellenv is appended to `~/.profile` (idempotent).
+- Existing `~/.config/labwc/autostart` is backed up to `autostart.latticed-backup` before being replaced.
+- Portainer compose file lives at `/opt/latticed/portainer/compose.yaml`.
+- `set -Eeuo pipefail` + `ERR` trap: the script stops at the first failure and tells you the line.
+
+## License
+
+MIT - see [LICENSE](LICENSE).
