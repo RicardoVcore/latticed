@@ -1,0 +1,133 @@
+#!/usr/bin/env bash
+# Latticed - Debian 13 developer workstation bootstrap
+set -Eeuo pipefail
+
+readonly LATTICED_VERSION="0.1.0"
+readonly REQUIRED_CODENAME="trixie"
+TARGET_USER="${SUDO_USER:-$USER}"
+TARGET_HOME="$(getent passwd "$TARGET_USER" | cut -d: -f6)"
+
+log(){ printf '\n[Latticed] %s\n' "$*"; }
+die(){ printf '\n[ERROR] %s\n' "$*" >&2; exit 1; }
+trap 'die "Installation failed near line $LINENO. Fix the error and rerun; completed package steps are safe to repeat."' ERR
+
+[[ $EUID -ne 0 ]] || die "Run this as your normal user, not root. The script will use sudo when required."
+command -v sudo >/dev/null || die "sudo is required."
+sudo -v
+source /etc/os-release
+[[ "${ID:-}" == "debian" && "${VERSION_CODENAME:-}" == "$REQUIRED_CODENAME" ]] || die "Latticed supports Debian 13 (Trixie) only."
+case "$(dpkg --print-architecture)" in amd64|arm64) ;; *) die "Noctalia's Debian repository currently supports amd64 and arm64 only." ;; esac
+
+log "Installing base desktop and applications"
+sudo apt-get update
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl wget gnupg git build-essential procps file unzip labwc chromium filezilla imagemagick wezterm network-manager network-manager-gnome pipewire pipewire-pulse wireplumber xdg-desktop-portal xdg-desktop-portal-wlr policykit-1 dbus-user-session fonts-noto fonts-noto-color-emoji
+
+log "Installing Noctalia"
+tmpdir="$(mktemp -d)"
+wget -q -O "$tmpdir/nickh-archive-keyring.deb" https://pkg.noctalia.dev/deb/nickh-archive-keyring.deb
+sudo dpkg -i "$tmpdir/nickh-archive-keyring.deb"
+sudo wget -q -O /etc/apt/sources.list.d/noctalia-trixie.sources https://pkg.noctalia.dev/deb/noctalia-trixie.sources
+sudo apt-get update
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y noctalia
+rm -rf "$tmpdir"
+
+log "Installing Brave Origin"
+sudo curl -fsSLo /usr/share/keyrings/brave-browser-archive-keyring.gpg https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
+sudo curl -fsSLo /etc/apt/sources.list.d/brave-browser-release.sources https://brave-browser-apt-release.s3.brave.com/brave-browser.sources
+sudo apt-get update
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y brave-origin
+
+log "Installing Homebrew"
+if [[ ! -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then
+  NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+fi
+BREW=/home/linuxbrew/.linuxbrew/bin/brew
+[[ -x "$BREW" ]] || die "Homebrew installation failed."
+"$BREW" install ripgrep bat node
+PROFILE="$TARGET_HOME/.profile"
+touch "$PROFILE"
+grep -q 'linuxbrew/.linuxbrew/bin/brew shellenv' "$PROFILE" || cat >> "$PROFILE" <<'BREWEOF'
+
+# Homebrew - managed by Latticed
+if [ -x /home/linuxbrew/.linuxbrew/bin/brew ]; then
+    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+fi
+BREWEOF
+
+log "Installing Docker Engine + Compose"
+conflicts=()
+for pkg in docker.io docker-compose docker-doc docker-buildx podman-docker containerd runc; do dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q 'ok installed' && conflicts+=("$pkg") || true; done
+((${#conflicts[@]})) && sudo apt-get remove -y "${conflicts[@]}"
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+ARCH="$(dpkg --print-architecture)"
+sudo tee /etc/apt/sources.list.d/docker.sources >/dev/null <<EOF2
+Types: deb
+URIs: https://download.docker.com/linux/debian
+Suites: trixie
+Components: stable
+Architectures: $ARCH
+Signed-By: /etc/apt/keyrings/docker.asc
+EOF2
+sudo apt-get update
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo systemctl enable --now docker
+sudo usermod -aG docker "$TARGET_USER"
+
+log "Installing Portainer CE on localhost:9443"
+sudo install -d -m 0755 /opt/latticed/portainer
+sudo tee /opt/latticed/portainer/compose.yaml >/dev/null <<'PORTAINER'
+services:
+  portainer:
+    image: portainer/portainer-ce:lts
+    container_name: portainer
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "127.0.0.1:9443:9443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+volumes:
+  portainer_data:
+PORTAINER
+sudo docker compose -f /opt/latticed/portainer/compose.yaml up -d
+
+log "Installing Codex CLI"
+PATH="/home/linuxbrew/.linuxbrew/bin:$PATH" npm install -g @openai/codex
+
+log "Installing Claude Code"
+if ! command -v claude >/dev/null 2>&1; then curl -fsSL https://claude.ai/install.sh | bash; fi
+
+log "Configuring Labwc + Noctalia"
+LABWC_DIR="$TARGET_HOME/.config/labwc"
+mkdir -p "$LABWC_DIR"
+if [[ -f "$LABWC_DIR/autostart" && ! -f "$LABWC_DIR/autostart.latticed-backup" ]]; then cp -a "$LABWC_DIR/autostart" "$LABWC_DIR/autostart.latticed-backup"; fi
+cat > "$LABWC_DIR/autostart" <<'AUTOSTART'
+#!/bin/sh
+noctalia >/tmp/noctalia.log 2>&1 &
+AUTOSTART
+chmod +x "$LABWC_DIR/autostart"
+
+sudo systemctl enable NetworkManager
+
+cat <<EOF3
+
+============================================================
+ Latticed ${LATTICED_VERSION} installation complete
+============================================================
+ Debian 13 + Labwc + Noctalia
+ WezTerm | Chromium | Brave Origin | FileZilla | ImageMagick
+ Homebrew: rg, bat, Node.js
+ Docker Engine + Compose
+ Portainer: https://localhost:9443
+ Claude Code + OpenAI Codex CLI
+
+Log out/reboot so Docker group membership takes effect.
+Start the desktop from a TTY with: labwc
+
+No display manager is installed or replaced in v0.1.0.
+============================================================
+EOF3
