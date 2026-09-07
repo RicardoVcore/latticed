@@ -22,7 +22,7 @@ Single-script bootstrap that turns a fresh **Debian 13 (Trixie)** install into a
 - Run as your **normal user** (not root). `sudo` required; script calls it when needed.
 - Network access to Debian, Noctalia, Brave, Docker, and Homebrew repos.
 
-> **Use a minimal Debian base.** Latticed installs the entire Wayland stack itself (Labwc, Noctalia, PipeWire, portals) and no display manager. Start from a **netinst ISO** with every desktop task unchecked in `tasksel` (keep "standard system utilities"), or a cloud/minimal image. A preinstalled GNOME/KDE desktop only duplicates and conflicts with what this script sets up. Make sure `sudo` is installed and your user is in `sudo`.
+> **Use a minimal Debian base.** Latticed installs the entire Wayland stack itself (Labwc, Noctalia, PipeWire, portals) and no display manager. Start from a **netinst ISO** with every desktop task unchecked in `tasksel` (keep "standard system utilities"), or a cloud/minimal image. A preinstalled GNOME/KDE desktop only duplicates and conflicts with what this script sets up. If `sudo` is missing or your user is not in the `sudo` group, the script bootstraps it for you using the root account (you enter the root password once) and relaunches itself - no manual `usermod` or logout needed.
 
 ## Usage
 
