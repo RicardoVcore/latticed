@@ -7,6 +7,8 @@ readonly REQUIRED_CODENAME="trixie"
 TARGET_USER="${SUDO_USER:-$USER}"
 TARGET_HOME="$(getent passwd "$TARGET_USER" | cut -d: -f6)"
 SCRIPT_PATH="$(readlink -f "$0")"
+PROFILE="$TARGET_HOME/.profile"
+touch "$PROFILE"
 
 log(){ printf '\n[Latticed] %s\n' "$*"; }
 die(){ printf '\n[ERROR] %s\n' "$*" >&2; exit 1; }
@@ -74,8 +76,6 @@ fi
 BREW=/home/linuxbrew/.linuxbrew/bin/brew
 [[ -x "$BREW" ]] || die "Homebrew installation failed."
 "$BREW" install ripgrep bat node
-PROFILE="$TARGET_HOME/.profile"
-touch "$PROFILE"
 grep -q 'linuxbrew/.linuxbrew/bin/brew shellenv' "$PROFILE" || cat >> "$PROFILE" <<'BREWEOF'
 
 # Homebrew - managed by Latticed
@@ -130,6 +130,12 @@ PATH="/home/linuxbrew/.linuxbrew/bin:$PATH" npm install -g @openai/codex
 
 log "Installing Claude Code"
 if ! command -v claude >/dev/null 2>&1; then curl -fsSL https://claude.ai/install.sh | bash; fi
+# Claude Code installs to ~/.local/bin; make sure it is on PATH for new shells.
+grep -q '.local/bin - managed by Latticed' "$PROFILE" || cat >> "$PROFILE" <<'LOCALBINEOF'
+
+# ~/.local/bin - managed by Latticed
+case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) export PATH="$HOME/.local/bin:$PATH" ;; esac
+LOCALBINEOF
 
 log "Configuring Labwc + Noctalia"
 LABWC_DIR="$TARGET_HOME/.config/labwc"
@@ -176,8 +182,13 @@ EOF3
 
 # A reboot is needed for the docker (and sudo) group membership to take effect.
 # The parent shell that launched this script still lacks those groups, so offer
-# to reboot from here, where we still hold working sudo.
-read -rp $'\nReboot now to finish? [y/N] ' answer
+# to reboot from here, where we still hold working sudo. Skip the prompt when
+# there is no terminal to read from (non-interactive run).
+if [[ -t 0 ]]; then
+  read -rp $'\nReboot now to finish? [y/N] ' answer
+else
+  answer=n
+fi
 if [[ "$answer" =~ ^[Yy]$ ]]; then
   log "Rebooting"
   sudo systemctl reboot
