@@ -161,3 +161,14 @@ Start the desktop from a TTY with: labwc
 No display manager is installed or replaced in v0.1.0.
 ============================================================
 EOF3
+
+# A reboot is needed for the docker (and sudo) group membership to take effect.
+# The parent shell that launched this script still lacks those groups, so offer
+# to reboot from here, where we still hold working sudo.
+read -rp $'\nReboot now to finish? [y/N] ' answer
+if [[ "$answer" =~ ^[Yy]$ ]]; then
+  log "Rebooting"
+  sudo systemctl reboot
+else
+  log "Skipping reboot. Reboot yourself before starting the desktop so the docker group is active."
+fi
