@@ -23,7 +23,7 @@ ensure_sudo(){
   fi
   [[ -z "${LATTICED_SUDO_BOOTSTRAPPED:-}" ]] || die "sudo still not usable. Enable the root account or add '$TARGET_USER' to the sudo group, then rerun."
   log "sudo is not set up for '$TARGET_USER'. Configuring it now - enter the ROOT password when prompted."
-  su root -c "apt-get update && apt-get install -y sudo && usermod -aG sudo '$TARGET_USER'" \
+  su - root -c "apt-get update && apt-get install -y sudo && usermod -aG sudo '$TARGET_USER'" \
     || die "Could not configure sudo. Set a root password (or add '$TARGET_USER' to the sudo group) and rerun."
   log "sudo ready. Relaunching Latticed with the new group membership active."
   exec env LATTICED_SUDO_BOOTSTRAPPED=1 sg sudo -c "bash '$SCRIPT_PATH'"
