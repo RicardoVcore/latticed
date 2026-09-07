@@ -60,6 +60,18 @@ Completed package steps are safe to repeat - rerun after fixing any failure.
 - Portainer compose file lives at `/opt/latticed/portainer/compose.yaml`.
 - `set -Eeuo pipefail` + `ERR` trap: the script stops at the first failure and tells you the line.
 
+## Running in a VM
+
+On bare metal Debian ships the GPU drivers, so resolution just works. In a VM the virtual GPU may only offer a small mode list. labwc is Wayland, so use `wlr-randr` (not `xrandr`):
+
+```bash
+sudo apt install -y wlr-randr
+wlr-randr                                      # list outputs + modes
+wlr-randr --output Virtual-1 --mode 1920x1080  # set resolution
+```
+
+Make it persist by adding that `wlr-randr` line to `~/.config/labwc/autostart`. If the mode you want is not listed, fix it on the **host**: set the VM's video model to virtio (or QXL) with more VRAM, and run `spice-vdagent` in the guest so the display resizes with the virt-viewer window.
+
 ## License
 
 MIT - see [LICENSE](LICENSE).
