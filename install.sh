@@ -37,7 +37,14 @@ case "$(dpkg --print-architecture)" in amd64|arm64) ;; *) die "Noctalia's Debian
 
 log "Installing base desktop and applications"
 sudo apt-get update
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl wget gnupg git build-essential procps file unzip labwc chromium filezilla imagemagick wezterm network-manager network-manager-gnome pipewire pipewire-pulse wireplumber xdg-desktop-portal xdg-desktop-portal-wlr policykit-1 dbus-user-session fonts-noto fonts-noto-color-emoji
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl wget gnupg git build-essential procps file unzip labwc chromium filezilla imagemagick network-manager network-manager-gnome pipewire pipewire-pulse wireplumber xdg-desktop-portal xdg-desktop-portal-wlr polkitd pkexec dbus-user-session fonts-noto fonts-noto-color-emoji
+
+log "Installing WezTerm"
+curl -fsSL https://apt.fury.io/wez/gpg.key | sudo gpg --yes --dearmor -o /usr/share/keyrings/wezterm-fury.gpg
+sudo chmod 644 /usr/share/keyrings/wezterm-fury.gpg
+echo 'deb [signed-by=/usr/share/keyrings/wezterm-fury.gpg] https://apt.fury.io/wez/ * *' | sudo tee /etc/apt/sources.list.d/wezterm.list >/dev/null
+sudo apt-get update
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y wezterm
 
 log "Installing Noctalia"
 tmpdir="$(mktemp -d)"
