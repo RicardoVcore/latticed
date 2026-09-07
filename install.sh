@@ -12,20 +12,26 @@ log(){ printf '\n[Latticed] %s\n' "$*"; }
 die(){ printf '\n[ERROR] %s\n' "$*" >&2; exit 1; }
 trap 'die "Installation failed near line $LINENO. Fix the error and rerun; completed package steps are safe to repeat."' ERR
 
-# Make sure the invoking user can use sudo. A minimal Debian install often ships
-# without sudo, or with the first user missing from the sudo group. Bootstrap it
-# once via the root account, then re-exec with the new group active (sg) so the
-# user never has to install sudo or log out and back in by hand.
+# Make sure the invoking user can actually use sudo. A minimal Debian install
+# often ships without sudo, or with the first user missing from the sudo group.
+# We may also be in a login session that predates the group being added, in
+# which case sudo still refuses. In every case we fix it and re-exec with the
+# group active (sg), so the user never installs sudo or logs out and in by hand.
 ensure_sudo(){
-  if command -v sudo >/dev/null 2>&1 && id -nG "$TARGET_USER" 2>/dev/null | grep -qw sudo; then
-    sudo -v
+  # Already works (prompts for the password if needed).
+  if command -v sudo >/dev/null 2>&1 && sudo -v; then
     return 0
   fi
-  [[ -z "${LATTICED_SUDO_BOOTSTRAPPED:-}" ]] || die "sudo still not usable. Enable the root account or add '$TARGET_USER' to the sudo group, then rerun."
-  log "sudo is not set up for '$TARGET_USER'. Configuring it now - enter the ROOT password when prompted."
-  su - root -c "apt-get update && apt-get install -y sudo && usermod -aG sudo '$TARGET_USER'" \
-    || die "Could not configure sudo. Set a root password (or add '$TARGET_USER' to the sudo group) and rerun."
-  log "sudo ready. Relaunching Latticed with the new group membership active."
+  # A relaunch has already happened and sudo still refuses: real config problem.
+  [[ -z "${LATTICED_SUDO_BOOTSTRAPPED:-}" ]] || die "sudo still refuses for '$TARGET_USER'. Check that /etc/sudoers grants the sudo group (%sudo), then open a new login session and rerun."
+  if command -v sudo >/dev/null 2>&1 && id -nG "$TARGET_USER" 2>/dev/null | grep -qw sudo; then
+    log "'$TARGET_USER' is in the sudo group but this login session predates it. Relaunching with the group active."
+  else
+    log "sudo is not set up for '$TARGET_USER'. Configuring it now - enter the ROOT password when prompted."
+    su - root -c "apt-get update && apt-get install -y sudo && usermod -aG sudo '$TARGET_USER'" \
+      || die "Could not configure sudo. Set a root password (or add '$TARGET_USER' to the sudo group) and rerun."
+  fi
+  log "Relaunching Latticed with sudo access active."
   exec env LATTICED_SUDO_BOOTSTRAPPED=1 sg sudo -c "bash '$SCRIPT_PATH'"
 }
 
