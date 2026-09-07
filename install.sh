@@ -26,7 +26,7 @@ ensure_sudo(){
   su root -c "apt-get update && apt-get install -y sudo && usermod -aG sudo '$TARGET_USER'" \
     || die "Could not configure sudo. Set a root password (or add '$TARGET_USER' to the sudo group) and rerun."
   log "sudo ready. Relaunching Latticed with the new group membership active."
-  exec env LATTICED_SUDO_BOOTSTRAPPED=1 sg sudo -c "$SCRIPT_PATH"
+  exec env LATTICED_SUDO_BOOTSTRAPPED=1 sg sudo -c "bash '$SCRIPT_PATH'"
 }
 
 [[ $EUID -ne 0 ]] || die "Run this as your normal user, not root. The script will use sudo when required."

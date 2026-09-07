@@ -26,11 +26,23 @@ Single-script bootstrap that turns a fresh **Debian 13 (Trixie)** install into a
 
 ## Usage
 
+A fresh minimal Debian usually has no `git` yet, and installing it needs root. Do that one bootstrap step as root:
+
 ```bash
-git clone <this-repo> latticed
-cd latticed
-./install.sh
+su -
+apt update && apt install -y git
+exit
 ```
+
+Then, as your **normal user**, clone and run:
+
+```bash
+git clone https://github.com/RicardoVcore/latticed.git
+cd latticed
+bash install.sh
+```
+
+> Clone the repo - don't pipe the script through `curl … | bash`. The sudo bootstrap re-execs the script as a real file, which a piped stream can't provide.
 
 Completed package steps are safe to repeat - rerun after fixing any failure.
 
