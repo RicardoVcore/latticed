@@ -15,12 +15,15 @@ log(){ printf '\n[Latticed] %s\n' "$*"; }
 die(){ printf '\n[ERROR] %s\n' "$*" >&2; exit 1; }
 trap 'die "Installation failed near line $LINENO. Fix the error and rerun; completed package steps are safe to repeat."' ERR
 
-# Make sure the invoking user can actually use sudo. A minimal Debian install
-# often ships without sudo, or with the first user missing from the sudo group.
-# We may also be in a login session that predates the group being added, in
-# which case sudo still refuses. In every case we fix it and re-exec with the
-# group active (sg), so the user never installs sudo or logs out and in by hand.
+# Make sure the invoking user can actually use sudo. Non-interactive (no tty,
+# e.g. the firstboot systemd unit): require passwordless sudo, never bootstrap
+# or relaunch. Interactive: prompt via sudo -v if that works; otherwise bootstrap
+# with su - and relaunch via sg sudo (a login session may predate the group).
 ensure_sudo(){
+  if [[ ! -t 0 ]]; then
+    sudo -n true 2>/dev/null || die "sudo needs passwordless access for '$TARGET_USER' (the preseed drop-in /etc/sudoers.d/90-latticed-firstboot should provide it)"
+    return 0
+  fi
   # Already works (prompts for the password if needed).
   if command -v sudo >/dev/null 2>&1 && sudo -v; then
     return 0
