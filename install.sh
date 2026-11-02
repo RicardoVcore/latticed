@@ -7,6 +7,7 @@ readonly REQUIRED_CODENAME="trixie"
 TARGET_USER="${SUDO_USER:-$USER}"
 TARGET_HOME="$(getent passwd "$TARGET_USER" | cut -d: -f6)"
 SCRIPT_PATH="$(readlink -f "$0")"
+REPO_DIR="$(dirname "$SCRIPT_PATH")"
 PROFILE="$TARGET_HOME/.profile"
 touch "$PROFILE"
 
@@ -141,11 +142,8 @@ log "Configuring Labwc + Noctalia"
 LABWC_DIR="$TARGET_HOME/.config/labwc"
 mkdir -p "$LABWC_DIR"
 if [[ -f "$LABWC_DIR/autostart" && ! -f "$LABWC_DIR/autostart.latticed-backup" ]]; then cp -a "$LABWC_DIR/autostart" "$LABWC_DIR/autostart.latticed-backup"; fi
-cat > "$LABWC_DIR/autostart" <<'AUTOSTART'
-#!/bin/sh
-noctalia >/tmp/noctalia.log 2>&1 &
-AUTOSTART
-chmod +x "$LABWC_DIR/autostart"
+# Copy the dotfiles tree into $HOME; existing files are overwritten (autostart is backed up above).
+cp -a "$REPO_DIR/dotfiles/." "$TARGET_HOME/"
 
 # Start the Wayland desktop automatically after logging in on tty1. No display
 # manager is installed, so this is what brings up labwc (which in turn launches

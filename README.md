@@ -59,6 +59,8 @@ Completed package steps are safe to repeat - rerun after fixing any failure.
 - Existing `~/.config/labwc/autostart` is backed up to `autostart.latticed-backup` before being replaced.
 - Portainer compose file lives at `/opt/latticed/portainer/compose.yaml`.
 - `set -Eeuo pipefail` + `ERR` trap: the script stops at the first failure and tells you the line.
+- User config lives in `dotfiles/`; `install.sh` copies the whole tree into `$HOME`, overwriting existing files (labwc autostart is backed up first).
+- `preseed/` holds the unattended Debian ISO install skeleton (WIP, not yet a published ISO).
 
 ## Running in a VM
 

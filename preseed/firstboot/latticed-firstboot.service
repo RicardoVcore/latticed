@@ -1,0 +1,27 @@
+# Oneshot unit that runs install.sh as the new user on first boot after the
+# preseeded install. Enabled by the preseed late_command.
+[Unit]
+Description=Latticed first boot installer
+After=network-online.target
+Wants=network-online.target
+# Skip once the install has run, and never start before the repo is staged.
+ConditionPathExists=!/var/lib/latticed/done
+ConditionPathExists=/opt/latticed/install.sh
+
+[Service]
+Type=oneshot
+User=CHANGEME
+ExecStart=/bin/bash /opt/latticed/install.sh
+# The "+" prefix runs this as root: the sudoers file is system-wide and the
+# done marker must not be owned by the user. The ExecStopPost line below
+# removes the temporary passwordless sudoers file (90-latticed-firstboot)
+# on every exit, so the NOPASSWD rule never outlives the run.
+ExecStartPost=+/bin/sh -c 'mkdir -p /var/lib/latticed && touch /var/lib/latticed/done'
+ExecStopPost=+/bin/sh -c 'rm -f /etc/sudoers.d/90-latticed-firstboot'
+# No tty is attached in this run, so install.sh skips its reboot prompt and
+# the docker group is not yet active. Reboot as root so it takes effect.
+ExecStartPost=+/bin/sh -c 'systemctl reboot'
+RemainAfterExit=no
+
+[Install]
+WantedBy=multi-user.target
