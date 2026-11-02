@@ -1,0 +1,2 @@
+#!/bin/sh
+noctalia >/tmp/noctalia.log 2>&1 &
