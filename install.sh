@@ -45,6 +45,9 @@ source /etc/os-release
 case "$(dpkg --print-architecture)" in amd64|arm64) ;; *) die "Noctalia's Debian repository currently supports amd64 and arm64 only." ;; esac
 
 log "Installing base desktop and applications"
+# Finish packages left half-configured by an interrupted earlier run (e.g. a killed
+# install). No-op when dpkg is clean; without it apt refuses to run.
+sudo dpkg --configure -a
 sudo apt-get update
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl wget gnupg git build-essential procps file unzip labwc chromium filezilla imagemagick network-manager network-manager-gnome pipewire pipewire-pulse wireplumber xdg-desktop-portal xdg-desktop-portal-wlr polkitd pkexec dbus-user-session fonts-noto fonts-noto-color-emoji
 
