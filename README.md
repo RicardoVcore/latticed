@@ -44,6 +44,18 @@ bash install.sh
 
 > Clone the repo - don't pipe the script through `curl … | bash`. The sudo bootstrap re-execs the script as a real file, which a piped stream can't provide.
 
+### Build the ISO
+
+Turn the official Debian 13 netinst into an unattended Latticed installer (requires `xorriso` and `rsync`):
+
+```bash
+LATTICED_USER=you \
+LATTICED_PASSWORD_HASH="$(openssl passwd -6)" \
+  ./build-iso.sh debian-13.7.0-amd64-netinst.iso
+```
+
+Optional env: `LATTICED_TIMEZONE` (default Europe/Lisbon), `LATTICED_HOSTNAME` (default latticed), `LATTICED_SHA512SUMS` (verify the input ISO). Output lands in `dist/`.
+
 Completed package steps are safe to repeat - rerun after fixing any failure.
 
 ## After install
@@ -60,7 +72,7 @@ Completed package steps are safe to repeat - rerun after fixing any failure.
 - Portainer compose file lives at `/opt/latticed/portainer/compose.yaml`.
 - `set -Eeuo pipefail` + `ERR` trap: the script stops at the first failure and tells you the line.
 - User config lives in `dotfiles/`; `install.sh` copies the whole tree into `$HOME`, overwriting existing files (labwc autostart is backed up first).
-- `preseed/` holds the unattended Debian ISO install skeleton (WIP, not yet a published ISO).
+- The ISO build bakes `preseed/` and the repo into a netinst image; see "Build the ISO" under Usage.
 
 ## Running in a VM
 

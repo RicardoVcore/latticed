@@ -2,8 +2,12 @@
 # preseeded install. Enabled by the preseed late_command.
 [Unit]
 Description=Latticed first boot installer
-After=network-online.target
+After=network-online.target multi-user.target
 Wants=network-online.target
+# Run after boot completes, not inside the boot transaction: install.sh calls
+# systemctl start/enable --now, and a start job queued during boot waits on
+# multi-user.target, which waits on this unit (deadlock). Hit by dpkg configuring
+# power-profiles-daemon and by docker start.
 # Skip once the install has run, and never start before the repo is staged.
 ConditionPathExists=!/var/lib/latticed/done
 ConditionPathExists=/opt/latticed/install.sh
